@@ -16015,11 +16015,14 @@ ResultType Line::LineError(LPCTSTR aErrorText, ResultType aErrorType, LPCTSTR aE
 
 int Line::FormatError(LPTSTR aBuf, int aBufSize, ResultType aErrorType, LPCTSTR aErrorText, LPCTSTR aExtraInfo, Line *aLine, LPCTSTR aFooter, LPCTSTR aWhatInfo, bool custom_format)
 {
+	// HH: modified FormatError to allow optional parameters aWhatInfo and custom_format
+	// HH: a custom exception message format is used if custom_format==true, which also displays aWhatInfo
 	TCHAR source_file[MAX_PATH * 2];
 	LPTSTR aBuf_orig = aBuf;
 	// Error message:
 	if (custom_format)
 	{
+		// HH: this is the custom exception message format
 		if (aLine && aLine->mFileIndex)
 			sntprintf(source_file, _countof(source_file), _T("#Include file \"%s\"\n"), sSourceFile[aLine->mFileIndex]);
 		else
@@ -16029,14 +16032,12 @@ int Line::FormatError(LPTSTR aBuf, int aBufSize, ResultType aErrorType, LPCTSTR 
 			, aErrorText, source_file);
 
 		if (*aWhatInfo)
-			aBuf += sntprintf(aBuf, BUF_SPACE_REMAINING, _T("What: %s\n")
-				, aWhatInfo);
+			aBuf += sntprintf(aBuf, BUF_SPACE_REMAINING, _T("What: %s\n"), aWhatInfo);
 
 		if (*aExtraInfo)
 			// Use format specifier to make sure really huge strings that get passed our
 			// way, such as a var containing clipboard text, are kept to a reasonable size:
-			aBuf += sntprintf(aBuf, BUF_SPACE_REMAINING, _T("Code: %s\n")
-				, aExtraInfo);
+			aBuf += sntprintf(aBuf, BUF_SPACE_REMAINING, _T("Code: %s\n"), aExtraInfo);
 	}
 	else
 	{
@@ -16137,8 +16138,11 @@ ResultType Script::ScriptError(LPCTSTR aErrorText, LPCTSTR aExtraInfo) //, Resul
 
 ResultType Script::UnhandledException(ExprTokenType*& aToken, Line* aLine)
 {
+	// HH: Exception objects with the parameter custom_format will have a different exception message format
+	// HH: added 'what' information for use with the custom exception format.
 	LPCTSTR message = _T(""), extra = _T(""), what = _T("");
 	TCHAR extra_buf[MAX_NUMBER_SIZE], message_buf[MAX_NUMBER_SIZE], what_buf[MAX_NUMBER_SIZE];
+	// HH: custom_format defaults to false if undeclared, don't want to override default behaviour
 	bool custom_format = false;
 
 	if (Object *ex = dynamic_cast<Object *>(TokenToObject(*aToken)))
@@ -16147,8 +16151,10 @@ ResultType Script::UnhandledException(ExprTokenType*& aToken, Line* aLine)
 		ExprTokenType t;
 		if (ex->GetItem(t, _T("Message")))
 			message = TokenToString(t, message_buf);
+		// HH: 'what' info is only used with custom_format
 		if (ex->GetItem(t, _T("what")))
 			what = TokenToString(t, what_buf);
+		// HH: get the custom_format parameter if declared
 		if (ex->GetItem(t, _T("custom_format")))
 			custom_format = TokenToBOOL(t);
 		if (ex->GetItem(t, _T("Extra")))
@@ -16198,6 +16204,7 @@ ResultType Script::UnhandledException(ExprTokenType*& aToken, Line* aLine)
 	}
 
 	TCHAR buf[MSGBOX_TEXT_SIZE];
+	// HH: added 'what' and 'custom_format' optional parameters to FormatError
 	Line::FormatError(buf, _countof(buf), FAIL, message, extra, aLine, footer, what, custom_format);
 	MsgBox(buf);
 	
