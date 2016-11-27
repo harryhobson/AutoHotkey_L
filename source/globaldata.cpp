@@ -81,6 +81,7 @@ WarnMode g_Warn_UseEnv = WARNMODE_OFF;				//
 WarnMode g_Warn_LocalSameAsGlobal = WARNMODE_OFF;	//
 SingleInstanceType g_AllowOnlyOneInstance = ALLOW_MULTI_INSTANCE;
 bool g_persistent = false;  // Whether the script should stay running even after the auto-exec section finishes.
+bool g_ExitApp_on_exception = false; // HH: Whether unhandled exceptions should ExitApp (rather than just Exit thread)
 bool g_NoTrayIcon = false;
 #ifdef AUTOHOTKEYSC
 	bool g_AllowMainWindow = false;
