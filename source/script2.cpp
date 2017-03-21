@@ -3416,15 +3416,16 @@ ResultType Line::WinSet(LPTSTR aAttrib, LPTSTR aValue, LPTSTR aTitle, LPTSTR aTe
 	{
 	case WINSET_ALWAYSONTOP:
 	{
-		if (   !(exstyle = GetWindowLong(target_window, GWL_EXSTYLE))   )
-			return OK;
 		HWND topmost_or_not;
 		switch(ConvertOnOffToggle(aValue))
 		{
 		case TOGGLED_ON: topmost_or_not = HWND_TOPMOST; break;
 		case TOGGLED_OFF: topmost_or_not = HWND_NOTOPMOST; break;
 		case NEUTRAL: // parameter was blank, so it defaults to TOGGLE.
-		case TOGGLE: topmost_or_not = (exstyle & WS_EX_TOPMOST) ? HWND_NOTOPMOST : HWND_TOPMOST; break;
+		case TOGGLE:
+			exstyle = GetWindowLong(target_window, GWL_EXSTYLE);
+			topmost_or_not = (exstyle & WS_EX_TOPMOST) ? HWND_NOTOPMOST : HWND_TOPMOST;
+			break;
 		default: return OK;
 		}
 		// SetWindowLong() didn't seem to work, at least not on some windows.  But this does.
@@ -3471,8 +3472,8 @@ ResultType Line::WinSet(LPTSTR aAttrib, LPTSTR aValue, LPTSTR aTitle, LPTSTR aTe
 		// since there seem to be no easy API calls to discover the colors of pixels in an HBRUSH),
 		// the following is not yet implemented: Use window's own class background color (via
 		// GetClassLong) if aValue is entirely blank.
-		if (  !(exstyle = GetWindowLong(target_window, GWL_EXSTYLE))  )
-			return OK;  // Do nothing on OSes that don't support it.
+
+		exstyle = GetWindowLong(target_window, GWL_EXSTYLE);
 		if (!_tcsicmp(aValue, _T("Off")))
 			// One user reported that turning off the attribute helps window's scrolling performance.
 			SetWindowLong(target_window, GWL_EXSTYLE, exstyle & ~WS_EX_LAYERED);
@@ -5567,9 +5568,11 @@ LRESULT CALLBACK MainWindowProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lPar
 		// SendMessage, 1029,,,, %A_ScriptFullPath% - AutoHotkey  ; Same as above but not sent via TRANSLATE.
 		return GetCurrentProcessId(); // Don't use ReplyMessage because then our thread can't reply to itself with this answer.
 
-	case AHK_HOT_IF_EXPR: // L4: HotCriterionAllowsFiring uses this to ensure expressions are evaluated only on the main thread.
-		if ((int)wParam > -1 && (int)wParam < g_HotExprLineCount)
-			return g_HotExprLines[(int)wParam]->EvaluateHotCriterionExpression((LPTSTR)lParam);
+	case AHK_HOT_IF_EVAL: // HotCriterionAllowsFiring uses this to ensure expressions are evaluated only on the main thread.
+		// Ensure wParam is a valid criterion (might prevent shatter attacks):
+		for (HotkeyCriterion *cp = g_FirstHotExpr; cp; cp = cp->NextCriterion)
+			if ((WPARAM)cp == wParam)
+				return cp->Eval((LPTSTR)lParam);
 		return 0;
 
 	case WM_MEASUREITEM: // L17: Measure menu icon. Not used on Windows Vista or later.
