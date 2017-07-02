@@ -1475,7 +1475,8 @@ ResultType Script::LoadIncludedFile(LPTSTR aFileSpec, bool aAllowDuplicateInclud
 #endif
 
 	// <buf> should be no larger than LINE_SIZE because some later functions rely upon that:
-	TCHAR msg_text[MAX_PATH + 256], buf1[LINE_SIZE], buf2[LINE_SIZE], suffix[16], pending_buf[LINE_SIZE] = _T("");
+	TCHAR msg_text[MAX_PATH + 256], buf1[LINE_SIZE], buf2[LINE_SIZE], suffix[16], pending_buf[LINE_SIZE];
+	*pending_buf = '\0';
 	LPTSTR buf = buf1, next_buf = buf2; // Oscillate between bufs to improve performance (avoids memcpy from buf2 to buf1).
 	size_t buf_length, next_buf_length, suffix_length;
 	bool pending_buf_has_brace;
@@ -2196,7 +2197,7 @@ process_completed_line:
 			if (mClassObjectCount)
 			{
 				// Check for assignment first, in case of something like "Static := 123".
-				for (cp = buf; cisalnum(*cp) || *cp == '_' || *cp == '.'; ++cp);
+				for (cp = buf; IS_IDENTIFIER_CHAR(*cp) || *cp == '.'; ++cp);
 				if (cp > buf) // i.e. buf begins with an identifier.
 				{
 					cp = omit_leading_whitespace(cp);
@@ -7632,7 +7633,7 @@ ResultType Script::DefineClassVars(LPTSTR aBuf, bool aStatic)
 				return ScriptError(_T("Unknown class var."), item);
 			for (TCHAR *cp; *item_end == '.'; item_end = cp)
 			{
-				for (cp = item_end + 1; cisalnum(*cp) || *cp == '_'; ++cp);
+				for (cp = item_end + 1; IS_IDENTIFIER_CHAR(*cp); ++cp);
 				if (cp == item_end + 1)
 					// This '.' wasn't followed by a valid identifier.  Leave item_end
 					// pointing at '.' and allow the switch() below to report the error.
@@ -14798,7 +14799,7 @@ __forceinline ResultType Line::Perform() // As of 2/9/2009, __forceinline() redu
 		return FileReadLine(ARG2, ARG3);
 
 	case ACT_FILEDELETE:
-		return FileDelete();
+		return FileDelete(ARG1);
 
 	case ACT_FILERECYCLE:
 		return FileRecycle(ARG1);
@@ -16445,7 +16446,8 @@ LPTSTR Script::ListKeyHistory(LPTSTR aBuf, int aBufSize) // aBufSize should be a
 	else
 		*win_title = '\0';
 
-	TCHAR timer_list[128] = _T("");
+	TCHAR timer_list[128];
+	*timer_list = '\0';
 	for (ScriptTimer *timer = mFirstTimer; timer != NULL; timer = timer->mNextTimer)
 		if (timer->mEnabled)
 			sntprintfcat(timer_list, _countof(timer_list) - 3, _T("%s "), timer->mLabel->Name()); // Allow room for "..."
